@@ -39,7 +39,7 @@ export function parseCustomPeriod(input: string): SelectedPeriod | null {
     return null;
   }
 
-  const [since, until] = parts;
+  const [since, until] = parts as [string, string];
   if (!isIsoDate(since) || !isIsoDate(until)) {
     return null;
   }

@@ -10,6 +10,15 @@ interface MetaGraphError {
   };
 }
 
+interface AdAccountsResponse {
+  data?: MetaAdAccount[];
+  paging?: { next?: string };
+}
+
+interface InsightsResponse {
+  data?: MetaInsightsRow[];
+}
+
 export class MetaApiError extends Error {
   statusCode?: number;
   code?: number;
@@ -42,10 +51,7 @@ export class MetaApiClient {
     let nextUrl: string | null = `${this.baseUrl}/me/adaccounts?fields=id,account_id,name,currency&limit=100&access_token=${encodeURIComponent(token)}`;
 
     while (nextUrl) {
-      const payload = await this.getJson<{
-        data?: MetaAdAccount[];
-        paging?: { next?: string };
-      }>(nextUrl, token, false);
+      const payload: AdAccountsResponse = await this.getJson<AdAccountsResponse>(nextUrl, token, false);
 
       if (payload.data?.length) {
         accounts.push(...payload.data);
@@ -66,7 +72,7 @@ export class MetaApiClient {
     const normalizedAccountId = params.accountId.startsWith("act_") ? params.accountId : `act_${params.accountId}`;
 
     const url = `${this.baseUrl}/${normalizedAccountId}/insights`;
-    const payload = await this.getJson<{ data?: MetaInsightsRow[] }>(url, params.token, true, {
+    const payload: InsightsResponse = await this.getJson<InsightsResponse>(url, params.token, true, {
       fields: "spend,reach,impressions,frequency,clicks,ctr,cpc,actions,action_values",
       level: "account",
       limit: 1,

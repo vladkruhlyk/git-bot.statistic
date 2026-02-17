@@ -1,5 +1,4 @@
 import { Context, Telegraf } from "telegraf";
-import type { CallbackQuery } from "telegraf/types";
 import { config } from "../config.js";
 import { Db } from "../db/database.js";
 import { MetaApiClient, MetaApiError } from "../services/metaApi.js";
@@ -70,7 +69,15 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
       return;
     }
 
-    await ctx.reply("Выберите рекламный кабинет:", accountSelectionKeyboard(pageData));
+    await ctx.reply(
+      "Выберите рекламный кабинет:",
+      accountSelectionKeyboard({
+        items: pageData.items,
+        page,
+        pageSize: PAGE_SIZE,
+        total: pageData.total
+      })
+    );
   }
 
   async function showPeriodMenu(ctx: Context, userId: number): Promise<void> {
@@ -215,7 +222,10 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
   });
 
   bot.on("callback_query", async (ctx) => {
-    const query = ctx.callbackQuery as CallbackQuery.DataCallbackQuery;
+    const query = ctx.callbackQuery;
+    if (!query || !("data" in query)) {
+      return;
+    }
     const data = query.data;
     const userId = getUserIdOrNull(ctx);
     if (!userId) {
