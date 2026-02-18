@@ -2,7 +2,7 @@ import { Markup } from "telegraf";
 import type { AdAccount, SelectedPeriod } from "../types/index.js";
 
 export function connectTokenKeyboard() {
-  return Markup.inlineKeyboard([[Markup.button.callback("Подключить Meta token", "connect_token")]]);
+  return Markup.inlineKeyboard([[Markup.button.callback("🔐 Подключить Meta token", "connect_token")]]);
 }
 
 export function accountSelectionKeyboard(params: {
@@ -31,7 +31,7 @@ export function accountSelectionKeyboard(params: {
     rows.push(pager);
   }
 
-  rows.push([Markup.button.callback("Выбрать период", "period_menu")]);
+  rows.push([Markup.button.callback("🗓 Выбрать период", "period_menu")]);
 
   return Markup.inlineKeyboard(rows);
 }
@@ -50,8 +50,8 @@ export function periodSelectionKeyboard(current?: SelectedPeriod | null) {
 
 export function statsActionsKeyboard() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("Сменить кабинет", "account_menu")],
-    [Markup.button.callback("Сменить период", "period_menu")],
-    [Markup.button.callback("Обновить", "refresh")]
+    [Markup.button.callback("🏢 Сменить кабинет", "account_menu")],
+    [Markup.button.callback("🗓 Сменить период", "period_menu")],
+    [Markup.button.callback("🔄 Обновить", "refresh")]
   ]);
 }

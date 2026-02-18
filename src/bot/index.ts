@@ -1,4 +1,5 @@
 import { Context, Telegraf } from "telegraf";
+import type { InlineKeyboardMarkup } from "telegraf/types";
 import { config } from "../config.js";
 import { Db } from "../db/database.js";
 import { MetaApiClient, MetaApiError } from "../services/metaApi.js";
@@ -19,6 +20,8 @@ const PAGE_SIZE = 8;
 type PendingState =
   | { type: "await_token" }
   | { type: "await_custom_period" };
+
+type KeyboardWithMarkup = { reply_markup: InlineKeyboardMarkup };
 
 export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
   const bot = new Telegraf(config.telegramBotToken);
@@ -61,7 +64,27 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
     }
   }
 
-  async function showAccountMenu(ctx: Context, userId: number, page: number): Promise<void> {
+  async function sendOrEditMessage(
+    ctx: Context,
+    text: string,
+    keyboard: KeyboardWithMarkup,
+    preferEdit: boolean
+  ): Promise<void> {
+    if (preferEdit && ctx.callbackQuery) {
+      try {
+        await ctx.editMessageText(text, {
+          reply_markup: keyboard.reply_markup
+        });
+        return;
+      } catch {
+        // Fall back to a new message when Telegram cannot edit the original one.
+      }
+    }
+
+    await ctx.reply(text, keyboard);
+  }
+
+  async function showAccountMenu(ctx: Context, userId: number, page: number, preferEdit = false): Promise<void> {
     const pageData = db.getAdAccountsPage(userId, page, PAGE_SIZE);
 
     if (!pageData.total) {
@@ -69,20 +92,20 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
       return;
     }
 
-    await ctx.reply(
-      "Выберите рекламный кабинет:",
-      accountSelectionKeyboard({
-        items: pageData.items,
-        page,
-        pageSize: PAGE_SIZE,
-        total: pageData.total
-      })
-    );
+    const keyboard = accountSelectionKeyboard({
+      items: pageData.items,
+      page,
+      pageSize: PAGE_SIZE,
+      total: pageData.total
+    });
+
+    await sendOrEditMessage(ctx, "Выберите рекламный кабинет:", keyboard, preferEdit);
   }
 
-  async function showPeriodMenu(ctx: Context, userId: number): Promise<void> {
+  async function showPeriodMenu(ctx: Context, userId: number, preferEdit = false): Promise<void> {
     const state = db.getUserState(userId);
-    await ctx.reply("Выберите период:", periodSelectionKeyboard(state?.selectedPeriod));
+    const keyboard = periodSelectionKeyboard(state?.selectedPeriod);
+    await sendOrEditMessage(ctx, "Выберите период:", keyboard, preferEdit);
   }
 
   async function sendStats(ctx: Context, userId: number): Promise<void> {
@@ -245,13 +268,13 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
 
     if (data === "account_menu") {
       await ctx.answerCbQuery();
-      await showAccountMenu(ctx, userId, 0);
+      await showAccountMenu(ctx, userId, 0, true);
       return;
     }
 
     if (data === "period_menu") {
       await ctx.answerCbQuery();
-      await showPeriodMenu(ctx, userId);
+      await showPeriodMenu(ctx, userId, true);
       return;
     }
 
@@ -264,7 +287,7 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
     if (data.startsWith("acc_page:")) {
       const page = Number(data.split(":")[1] ?? "0");
       await ctx.answerCbQuery();
-      await showAccountMenu(ctx, userId, Number.isFinite(page) ? page : 0);
+      await showAccountMenu(ctx, userId, Number.isFinite(page) ? page : 0, true);
       return;
     }
 
@@ -272,7 +295,7 @@ export function createBot(db: Db, metaApi: MetaApiClient): Telegraf {
       const accountId = data.slice("acc_select:".length);
       db.setUserState(userId, { selectedAccountId: accountId });
       await ctx.answerCbQuery("Кабинет выбран");
-      await showPeriodMenu(ctx, userId);
+      await showPeriodMenu(ctx, userId, true);
       return;
     }
 

@@ -76,7 +76,10 @@ export class MetaApiClient {
       fields: "spend,reach,impressions,frequency,clicks,ctr,cpc,actions,action_values",
       level: "account",
       limit: 1,
-      time_range: JSON.stringify({ since: params.since, until: params.until })
+      time_range: JSON.stringify({ since: params.since, until: params.until }),
+      action_report_time: "conversion",
+      use_account_attribution_setting: "true",
+      use_unified_attribution_setting: "true"
     });
 
     return payload.data?.[0] ?? {};

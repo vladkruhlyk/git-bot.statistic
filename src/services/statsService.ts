@@ -1,5 +1,22 @@
 import type { MetaInsightsRow, StatsMetrics } from "../types/index.js";
 
+const LEAD_ACTION_TYPES_PRIORITY: string[] = [
+  "lead",
+  "onsite_conversion.lead_grouped",
+  "offsite_conversion.fb_pixel_lead",
+  "omni_lead",
+  "onsite_web_lead",
+  "qualified_lead"
+];
+
+const PURCHASE_ACTION_TYPES_PRIORITY: string[] = [
+  "purchase",
+  "omni_purchase",
+  "offsite_conversion.fb_pixel_purchase",
+  "onsite_conversion.purchase",
+  "web_purchase"
+];
+
 function toNumber(value: string | undefined): number {
   if (!value) {
     return 0;
@@ -17,31 +34,40 @@ function safeDivide(numerator: number, denominator: number): number | null {
   return numerator / denominator;
 }
 
-function sumByActionTypes(actions: Array<{ action_type: string; value: string }> | undefined, matcher: (type: string) => boolean): number {
+function sumByActionType(
+  actions: Array<{ action_type: string; value: string }> | undefined,
+  actionType: string
+): number {
   if (!actions?.length) {
     return 0;
   }
 
+  const normalizedTarget = actionType.toLowerCase();
   return actions.reduce((acc, action) => {
-    return matcher(action.action_type) ? acc + toNumber(action.value) : acc;
+    const currentType = action.action_type.toLowerCase();
+    return currentType === normalizedTarget ? acc + toNumber(action.value) : acc;
   }, 0);
 }
 
-function isLeadAction(actionType: string): boolean {
-  const normalized = actionType.toLowerCase();
-  return normalized.includes("lead");
-}
+function pickMetricValue(
+  actions: Array<{ action_type: string; value: string }> | undefined,
+  priorities: string[]
+): number {
+  for (const actionType of priorities) {
+    const value = sumByActionType(actions, actionType);
+    if (value > 0) {
+      return value;
+    }
+  }
 
-function isPurchaseAction(actionType: string): boolean {
-  const normalized = actionType.toLowerCase();
-  return normalized.includes("purchase") || normalized.includes("omni_purchase");
+  return 0;
 }
 
 export function mapInsightsToMetrics(row: MetaInsightsRow): StatsMetrics {
   const spend = toNumber(row.spend);
-  const leads = sumByActionTypes(row.actions, isLeadAction);
-  const purchases = sumByActionTypes(row.actions, isPurchaseAction);
-  const purchaseValue = sumByActionTypes(row.action_values, isPurchaseAction);
+  const leads = pickMetricValue(row.actions, LEAD_ACTION_TYPES_PRIORITY);
+  const purchases = pickMetricValue(row.actions, PURCHASE_ACTION_TYPES_PRIORITY);
+  const purchaseValue = pickMetricValue(row.action_values, PURCHASE_ACTION_TYPES_PRIORITY);
 
   return {
     spend,
